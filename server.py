@@ -1,3 +1,4 @@
+#!/usr/bin/env /usr/bin/python2.4
 """Script server based on SimpleHTTPServer
 Handles GET and POST requests, in-memory session management,
 HTTP redirection
@@ -105,11 +106,11 @@ class ScriptRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
            
     def get_simulation_output(self):
        msg = ""
-       if( not 'projectId' in self.body ):
-          msg = msg + 'Must include the projectId'
+       if( not 'simulationId' in self.body ):
+          msg = msg + 'Must include the simulationId'
        else:
-          projectId = self.body['projectId'][0]
-          msg = SimulationFactory.getSimulationOutput(projectId)
+          simulationId = self.body['simulationId'][0]
+          msg = SimulationFactory.getSimulationOutput(simulationId)
        try:
           self.resp_headers = {"Content-type":'text/html'} # default
           self.resp_headers['Content-length'] = len(msg)
@@ -124,11 +125,11 @@ class ScriptRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
           
     def get_simulation_results(self):
        msg = ""
-       if( not 'projectId' in self.body ):
-          msg = msg + 'Must include the projectId'
+       if( not 'simulationId' in self.body ):
+          msg = msg + 'Must include the simulationId'
        else:
-          projectId = self.body['projectId'][0]
-          msg = SimulationFactory.getSimulationResults(projectId)
+          simulationId = self.body['simulationId'][0]
+          msg = SimulationFactory.getSimulationResults(simulationId)
        try:
           self.resp_headers = {"Content-type":'text/html'} # default
           self.resp_headers['Content-length'] = len(msg)
@@ -143,11 +144,11 @@ class ScriptRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
           
     def get_simulation_progress(self):
        msg = ""
-       if( not 'projectId' in self.body ):
-             msg = msg + 'Must include the projectId'
+       if( not 'simulationId' in self.body ):
+             msg = msg + 'Must include the simulationId'
        else:
-          projectId = self.body['projectId'][0]
-          msg = SimulationFactory.getSimulationProgress(projectId)
+          simulationId = self.body['simulationId'][0]
+          msg = SimulationFactory.getSimulationProgress(simulationId)
        try:
           #os.popen('gridlabd IEEE_13_house_vvc.glm > testSUCCESS')
           self.resp_headers = {"Content-type":'text/html'} # default
@@ -165,13 +166,11 @@ class ScriptRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def start_simulation(self):
        try:
           msg = ""
-          if( not 'fileURL' in self.body ):
-             msg = msg + 'Must include the file URL' 
-          elif( not 'projectId' in self.body ):
-             msg = msg + 'Must include the projectId'
+          if( not 'simulationId' in self.body ):
+             msg = msg + 'Must include the simulationId'
           else:
-             projectId = self.body['projectId'][0]
-             msg = SimulationFactory.newSimulation( self.body['fileURL'][0], projectId )
+             simulationId = self.body['simulationId'][0]
+             msg = SimulationFactory.newSimulation( simulationId, self.body['xml'][0] )
           #os.popen('gridlabd IEEE_13_house_vvc.glm > testSUCCESS')
           self.resp_headers = {"Content-type":'text/html'} # default
           self.resp_headers['Content-length'] = len(msg)
@@ -335,7 +334,7 @@ if __name__=="__main__":
       sys.exit(2)
    output = None
    verbose = False
-   port = 2150
+   port = 2160
    for o, a in opts:
 
       if o in ("-h", "--help"):
