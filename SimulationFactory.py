@@ -2,7 +2,7 @@ import shutil, Simulation, os
 
 
 simulationRootDirectory = '%s/simulation' % os.getcwd()
-allSimulations = {}
+
 print "init Simulation Factory"
 #nextSimulationId = 0
 # Remove old simulations
@@ -21,6 +21,7 @@ def setSocket(s):
 def closeSockets():
     for socket in savedSockets:
         socket.socket.close()
+
 # Iterate through the simulation directory and find an unused id
 def getUnusedSimulationId():
     maxSimulationId = 0
@@ -34,27 +35,29 @@ def getUnusedSimulationId():
         except:
             print 'corrupted simulation directory'
             return maxSimulationId + 1
-        
-def getSimulationProgress( simulationId ):
-    if( not simulationId in allSimulations ):
-        print allSimulations
-        return 'unknown simulation id: %s'%simulationId
-    return allSimulations[simulationId].getProgress()
 
+
+
+    
+def getSimulationProgress( simulationId ):
+    simulation = loadSimulation( simulationId )
+    if( simulation ):
+        return simulation.getProgress()
+    else:
+        return "CANNOT FIND SIMULATION (NO PROGRESS)"
+    
 def getSimulationResults( simulationId ):
-    if( not simulationId in allSimulations ):
-        print allSimulations
-        return 'unknown simulation id: %s'%simulationId
-    return allSimulations[simulationId].getResults()
+    simulation = loadSimulation( simulationId )
+    if( simulation ):
+        return simulation.getResults()
+    else:
+        return "CANNOT FIND SIMULATION (NO PROGRESS)"
+    
 
 # The server should not run more than 16 simulations at once
 # so we make sure that less than 16 are available.
 def activeSimulationCount():
-    activeSimulations = 0;
-    for simulationId in allSimulations.keys():
-        if( not allSimulations[simulationId].getTerminated() ):
-            activeSimulations = activeSimulations + 1
-    return activeSimulations
+    return 5
 
 def newSimulation( simulationId, xmlData ):
     global simulationRootDirectory
@@ -62,22 +65,20 @@ def newSimulation( simulationId, xmlData ):
     #simId = nextSimulationId
     if( activeSimulationCount() > 16 ):
         return 'Error: Server Busy.  Too many simulations running'
-    if( simulationId in allSimulations and not allSimulations[simulationId].getTerminated() ):
-        return 'Error: Simulation already started'
     simulationDirectory = simulationRootDirectory+ "/sim-" + str(simulationId)
-    simulation = Simulation.Simulation( simulationDirectory, simulationId, xmlData )
-    allSimulations[simulationId] = simulation
+    simulation = Simulation.Simulation( simulationDirectory, simulationId )
+    simulation.create( xmlData )
     print 'CREATED SIMULATION ID: %s'%simulationId
     return 'SUCCESS'
 
-def beginSimulation( simulationId ):
-    allSimulations[simulationId].startSimulationProess()
-    return 'SUCCESS'
-
-def addModelData( simulationId, file, fileName ):
-    if simulationId in allSimulations:
-        allSimulations[simulationId].addFile( fileName, file )
-        return "SUCCESS"
-    else:
-        return "CANNOT ADD %s, NO SIMULATION FOR SIMULATION ID %s"%(fileName, simulationId)
     
+def loadSimulation( simulationId ):
+    global simulationRootDirectory
+    if( activeSimulationCount() > 16 ):
+        return 'Error: Server Busy.  Too many simulations running'
+    simulationDirectory = simulationRootDirectory+ "/sim-" + str(simulationId)
+    simulation = Simulation.Simulation( simulationDirectory, simulationId )
+    if( simulation.load() ):
+        return simulation
+    else:
+        return False

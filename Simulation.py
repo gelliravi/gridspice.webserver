@@ -1,8 +1,12 @@
 import os, sys, subprocess, re, shutil, server, SimulationFactory
 from posixpath import  curdir, sep, pardir, join
 class Simulation(object):
+
+
+
+        
     """ Wrapper class for GridSpice simulations """
-    def __init__( self, simulationDirectory, simulationId, xmlData ):
+    def __init__( self, simulationDirectory, simulationId ):
         self.simulationDirectory = simulationDirectory
         self.simulationId = simulationId
         self.resultsDirectory =  simulationDirectory + '/results'
@@ -14,27 +18,33 @@ class Simulation(object):
         self.logFile = self.simulationDirectory + '/output.log'
         self.errFile = self.simulationDirectory + '/error.log'
         self.serverLocation = 'http://prodfe1.gridspice.org/gridspice.webserver'
+        self.pidFile = self.simulationDirectory+'/pid'
+        self.terminated = self.simulationDirectory+'/terminated'
         #Set valid to false,  we will set it http://127.0.0.1:56174/ImageViewer.html?gwt.codesvr=127.0.0.1:56171
         #to true at the end of init
         self.valid = False
-        
+
+
+    def load( self ):
+        for line in open(self.pidFile, 'r').readlines():
+            print 'loading pid: %s'%line
+            self.child_pid = int(line)
+            return True
+        return False
+            
+    def create( self, xmlData ):
         # If we are starting the simulation, make sure to clear our directory
         if os.path.exists( self.simulationDirectory ):
             shutil.rmtree( self.simulationDirectory )
-        os.mkdir( simulationDirectory )
+        os.mkdir( self.simulationDirectory )
         os.mkdir( self.resultsDirectory )
         os.mkdir( self.glmDirectory )
         self.child_pid = os.fork()
+        pidFile = open( self.pidFile, 'w+' )
+        pidFile.write("%d\n"%self.child_pid)
         
-        self.terminated = False
-        self.parseXML(xmlData)
-
-
-        ## Fork a new process to run the simulation, but store the
-        ## child's pid
-
-        print xmlData
         if self.child_pid == 0:
+            self.parseXML(xmlData)        
             #SimulationFactory.closeSockets()
             self.output = open( self.logFile, 'w+' )
             self.error = open( self.errFile, 'w+' )
@@ -104,33 +114,20 @@ class Simulation(object):
                 print 'FATAL or ERROR not contained in "%s"'%line
         print 'PROCESS IS VALID: %s'%lines
         return True
+
     # This function determines if the simulation process has terminated
     def getTerminated(self):
-        # if the simulation is null, we probably already waited on the
-        # zombie process
-        print "CHECKONG ON CHILD PID %s"%self.child_pid
-        if self.terminated:
-            return True
-        
-        pid,status = os.waitpid(self.child_pid, os.WNOHANG)
-        if status == 0 and pid==0:
+        try:
+            pid,status = os.waitpid(self.child_pid, os.WNOHANG)
+        except:
+            pass
+        if( os.path.exists("/proc/%d"%self.child_pid) ):
             return False
-
-
-        print "PROCESS STATUS: %d, %d"%(status, pid)
-        self.terminated = True
-        print "Process still alive %s %s"% (pid,status)
-        #exitCode = self.gridsimulation.poll()
-        #if exitCode is not None:
-            # If the simulation has completed, wait on the pid to free
-            # the zombie process
-        #    self.gridsimulation.wait()
-        #    self.gridsimulation = []
-        #    return True
         return True
+            
 
-    # Returns a 2-line response.  The first line is either 'COMPLETED', 'FAILED', or 'IN PROGRESS'
-    # The second line is either the timestamp, or N/A
+
+
     def getProgress(self):
         msg = ""
         if not self.glmReceived():
