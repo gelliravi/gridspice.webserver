@@ -17,7 +17,7 @@ class Simulation(object):
         self.lockFile = self.glmDirectory +'/complete'
         self.logFile = self.simulationDirectory + '/output.log'
         self.errFile = self.simulationDirectory + '/error.log'
-        self.serverLocation = 'http://prodfe1.gridspice.org/gridspice.webserver'
+        self.serverLocation = 'http://production.gridspice.org/gridspice.webserver'
         self.pidFile = self.simulationDirectory+'/pid'
         self.terminated = self.simulationDirectory+'/terminated'
         #Set valid to false,  we will set it http://127.0.0.1:56174/ImageViewer.html?gwt.codesvr=127.0.0.1:56171
