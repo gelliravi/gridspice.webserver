@@ -39,14 +39,14 @@ def getUnusedSimulationId():
 
 
     
-def getSimulationProgress( simulationId ):
-    simulation = loadSimulation( simulationId )
+def getSimulationProgress( simulationId, modelId ):
+    simulation = loadSimulation( simulationId, modelId )
     if( simulation ):
         return simulation.getProgress()
     else:
         return "CANNOT FIND SIMULATION (NO PROGRESS)"
     
-def getSimulationResults( simulationId ):
+def getSimulationResults( simulationId, modelId ):
     simulation = loadSimulation( simulationId )
     if( simulation ):
         return simulation.getResults()
@@ -57,6 +57,7 @@ def getSimulationResults( simulationId ):
 # The server should not run more than 16 simulations at once
 # so we make sure that less than 16 are available.
 def activeSimulationCount():
+    # TODO why 5?
     return 5
 
 def newSimulation( simulationId, xmlData ):
@@ -65,20 +66,19 @@ def newSimulation( simulationId, xmlData ):
     #simId = nextSimulationId
     if( activeSimulationCount() > 16 ):
         return 'Error: Server Busy.  Too many simulations running'
-    simulationDirectory = simulationRootDirectory+ "/sim-" + str(simulationId)
-    simulation = Simulation.Simulation( simulationDirectory, simulationId )
+    simulation = Simulation.Simulation( simulationRootDirectory, simulationId )
     simulation.create( xmlData )
     print 'CREATED SIMULATION ID: %s'%simulationId
     return 'SUCCESS'
 
     
-def loadSimulation( simulationId ):
+def loadSimulation( simulationId, modelId ):
     global simulationRootDirectory
     if( activeSimulationCount() > 16 ):
         return 'Error: Server Busy.  Too many simulations running'
     simulationDirectory = simulationRootDirectory+ "/sim-" + str(simulationId)
     simulation = Simulation.Simulation( simulationDirectory, simulationId )
-    if( simulation.load() ):
+    if( simulation.load(modelId) ):
         return simulation
     else:
         return False

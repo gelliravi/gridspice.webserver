@@ -110,6 +110,7 @@ class ScriptRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
           msg = msg + 'Must include the simulationId'
        else:
           simulationId = self.body['simulationId'][0]
+          # TODO - is this method implemented in SimulationFactory?
           msg = SimulationFactory.getSimulationOutput(simulationId)
        try:
           self.resp_headers = {"Content-type":'text/html'} # default
@@ -127,9 +128,12 @@ class ScriptRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
        msg = ""
        if( not 'simulationId' in self.body ):
           msg = msg + 'Must include the simulationId'
+       elif( not 'modelId' in self.body ):
+          ms = msg + 'Must include the modelId'
        else:
           simulationId = self.body['simulationId'][0]
-          msg = SimulationFactory.getSimulationResults(simulationId)
+          modelId = self.body['modelId'][0]
+          msg = SimulationFactory.getSimulationResults(simulationId, modelId)
        try:
           self.resp_headers = {"Content-type":'text/html'} # default
           self.resp_headers['Content-length'] = len(msg)
@@ -145,10 +149,13 @@ class ScriptRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def get_simulation_progress(self):
        msg = ""
        if( not 'simulationId' in self.body ):
-             msg = msg + 'Must include the simulationId'
+          msg = msg + 'Must include the simulationId'
+       elif( not 'modelId' in self.body ):
+          ms = msg + 'Must include the modelId'
        else:
           simulationId = self.body['simulationId'][0]
-          msg = SimulationFactory.getSimulationProgress(simulationId)
+          modelId = self.body['modelId'][0]
+          msg = SimulationFactory.getSimulationProgress(simulationId, modelId)
        try:
           #os.popen('gridlabd IEEE_13_house_vvc.glm > testSUCCESS')
           self.resp_headers = {"Content-type":'text/html'} # default
