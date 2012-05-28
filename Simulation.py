@@ -1,50 +1,42 @@
 import os, sys, subprocess, re, shutil, server, SimulationFactory
 from posixpath import  curdir, sep, pardir, join
+
 class Simulation(object):
-
-
-
         
     """ Wrapper class for GridSpice simulations """
-    def __init__( self, simulationDirectory, simulationId ):
-        self.simulationDirectory = simulationDirectory
+    def __init__(self, simulationRootDirectory, simulationId):
+        self.simulationBaseDirectory = os.path.join(simulationRootDirectory, 
+            "sim-" + str(simulationid))
         self.simulationId = simulationId
-        self.resultsDirectory =  simulationDirectory + '/results'
-        self.schematicPath = self.resultsDirectory + '/schematic'
-        self.dataFilePath = self.resultsDirectory + '/dataFile'
-        self.glmDirectory = simulationDirectory + '/glm'
-        self.glmFile = self.glmDirectory + '/model.glm'
-        self.lockFile = self.glmDirectory +'/complete'
-        self.logFile = self.simulationDirectory + '/output.log'
-        self.errFile = self.simulationDirectory + '/error.log'
-        self.serverLocation = 'http://production.gridspice.org/gridspice.webserver'
-        self.pidFile = self.simulationDirectory+'/pid'
-        self.terminated = self.simulationDirectory+'/terminated'
-        #Set valid to false,  we will set it http://127.0.0.1:56174/ImageViewer.html?gwt.codesvr=127.0.0.1:56171
-        #to true at the end of init
-        self.valid = False
 
-
-    def load( self ):
+    def load(self, modelId):
+        self.initInfo(modelId)
         for line in open(self.pidFile, 'r').readlines():
             print 'loading pid: %s'%line
             self.child_pid = int(line)
             return True
         return False
             
-    def create( self, xmlData ):
+    def create(self, xmlData):
+        self.parseXML(xmlData)
+        initInfo(self.models[0])
+
+        # make sure base directory for all model simulations with this
+        # simulation id exists
+        if not os.path.exists(self.simulationBaseDirectory):
+            os.mkdir(self.simulationBaseDirectory)
+
         # If we are starting the simulation, make sure to clear our directory
-        if os.path.exists( self.simulationDirectory ):
-            shutil.rmtree( self.simulationDirectory )
-        os.mkdir( self.simulationDirectory )
-        os.mkdir( self.resultsDirectory )
-        os.mkdir( self.glmDirectory )
+        if os.path.exists(self.simulationDirectory):
+            shutil.rmtree(self.simulationDirectory)
+        os.mkdir(self.simulationDirectory)
+        os.mkdir(self.resultsDirectory)
+        os.mkdir(self.glmDirectory)
         self.child_pid = os.fork()
         pidFile = open( self.pidFile, 'w+' )
         pidFile.write("%d\n"%self.child_pid)
         
         if self.child_pid == 0:
-            self.parseXML(xmlData)        
             #SimulationFactory.closeSockets()
             self.output = open( self.logFile, 'w+' )
             self.error = open( self.errFile, 'w+' )
@@ -55,36 +47,52 @@ class Simulation(object):
                 curlCmd = 'curl -o %s \'%s\' --connect-timeout 60' % (downloadDir, fileURL)
                 print "CURL CMD: %s" % curlCmd
                 os.system(curlCmd)
-            for model in self.models:
-                modelURL = self.serverPath+"gsDownloadService?schematicId="+model
-                print "DOWNLOADING MODEL: %s" % modelURL
-                downloadDir = "%s%s.glm" % (self.schematicPath,model)
-                curlCmd = 'curl -o %s \'%s\' --connect-timeout 60' % (downloadDir, modelURL)
-                print "CURL CMD: %s" % curlCmd
-                os.system(curlCmd)
+            modelURL = self.serverPath+"gsDownloadService?schematicId=" + self.modelId
+            print "DOWNLOADING MODEL: %s" % modelURL
+            downloadDir = "%s%s.glm" % (self.schematicPath, self.modelId)
+            curlCmd = 'curl -o %s \'%s\' --connect-timeout 60' % (downloadDir, modelURL)
+            print "CURL CMD: %s" % curlCmd
+            os.system(curlCmd)
 
-            print "CREATING LOCK FILE: %s"%self.lockFile
+            print "CREATING LOCK FILE: %s" % self.lockFile
             file = open("%s"%self.lockFile,'w+')
             file.close()
-            firstSchematic = "%s%s.glm" % (self.schematicPath,self.models[0])
+            schematic = "%s%s.glm" % (self.schematicPath, self.modelId)
 
-
-            simulationProc = subprocess.Popen( ['/usr/lib/gridlabd/gridlabd.bin', firstSchematic], \
+            simulationProc = subprocess.Popen( ['/usr/lib/gridlabd/gridlabd.bin', schematic], \
                        cwd=self.resultsDirectory, stdout=self.output.fileno(),\
                        stderr=self.error.fileno() )
             simulationProc.wait()
             os._exit(os.EX_OK)
         self.valid = True
         
+    def initInfo(self, modelId):
+        self.simulationDirectory = os.path.join(self.simulationBaseDirectory, 
+            "model-" + str(modelId))
+        self.modelId = modelId
+        self.resultsDirectory =  simulationDirectory + '/results'
+        self.schematicPath = self.resultsDirectory + '/schematic'
+        self.dataFilePath = self.resultsDirectory + '/dataFile'
+        self.glmDirectory = simulationDirectory + '/glm'
+        self.glmFile = self.glmDirectory + '/model.glm'
+        self.lockFile = self.glmDirectory +'/complete'
+        self.logFile = self.simulationDirectory + '/output.log'
+        self.errFile = self.simulationDirectory + '/error.log'
+        self.serverLocation = 'http://production.gridspice.org/gridspice.webserver'
+        self.pidFile = self.simulationDirectory + '/pid'
+        self.terminated = self.simulationDirectory + '/terminated'
+        #Set valid to false,  we will set it http://127.0.0.1:56174/ImageViewer.html?gwt.codesvr=127.0.0.1:56171
+        #to true at the end of init
+        self.valid = False
 
-    def parseXML( self, xmlData ):
+    def parseXML(self, xmlData):
         import elementtree.ElementTree as ET
         print "PARSING XML %s"%xmlData
         doc = ET.fromstring(xmlData)
         self.serverPath = doc.attrib['serverPath']
-        self.fileNames=[]
-        self.fileIds=[]
-        self.models=[]
+        self.fileNames = []
+        self.fileIds = []
+        self.models = []
         allFiles = doc.find('files')
         for file in list(allFiles):
             self.fileIds.append(file.attrib['id'])
@@ -93,10 +101,8 @@ class Simulation(object):
         for model in list(allModels):
             self.models.append(model.attrib['id'])
 
-
-        
     def name(self):
-        return str(self.simulationId)
+        return "%s-%s" % (str(self.simulationId), str(self.modelId))
 
     # Determine if the simulation actually started
     def getValid(self):
@@ -121,7 +127,7 @@ class Simulation(object):
             pid,status = os.waitpid(self.child_pid, os.WNOHANG)
         except:
             pass
-        if( os.path.exists("/proc/%d"%self.child_pid) ):
+        if os.path.exists("/proc/%d" % self.child_pid):
             return False
         return True
             
@@ -167,8 +173,6 @@ class Simulation(object):
 
 
     def relpath(path, start=curdir):
-
-
         if not path:
             raise ValueError("no path specified")
         start_list = posixpath.abspath(start).split(sep)
@@ -191,4 +195,3 @@ class Simulation(object):
             if not i == len(dirElems) -1 :
                 msg = msg + '\n'
         return msg
-        
