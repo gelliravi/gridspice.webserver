@@ -19,7 +19,7 @@ class Simulation(object):
             
     def create(self, xmlData):
         self.parseXML(xmlData)
-        initInfo(self.models[0])
+        self.initInfo(self.models[0])
 
         # make sure base directory for all model simulations with this
         # simulation id exists
